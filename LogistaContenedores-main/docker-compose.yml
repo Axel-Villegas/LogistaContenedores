@@ -1,0 +1,160 @@
+version: "2.4"
+
+services:
+  postgres:
+    image: postgres:16
+    container_name: flowbox-postgres
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: flowbox_user
+      POSTGRES_PASSWORD: flowbox_pass
+      POSTGRES_DB: flowboxdb
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:24.0.3
+    container_name: flowbox-keycloak
+    command: start-dev
+    ports:
+      - "8088:8080"
+    environment:
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: admin123
+      # --- CONFIGURACIÓN DE RED Y HOSTNAME (CRÍTICO) ---
+      # Indica que Keycloak será accedido públicamente como localhost
+      KC_HOSTNAME: localhost
+      # Indica que el puerto público es 8088 (no el 8080 interno)
+      KC_HOSTNAME_PORT: 8088
+      # Habilita HTTP (ya que no usas certificados SSL en local)
+      KC_HTTP_ENABLED: true
+      # Reemplaza al obsoleto KC_PROXY: edge
+      KC_PROXY_HEADERS: xforwarded
+      # Admin accesible via localhost
+      KC_HOSTNAME_ADMIN_URL: http://localhost:8088
+      
+      # Base de datos
+      KC_DB: postgres
+      KC_DB_URL_HOST: postgres
+      KC_DB_URL_DATABASE: flowboxdb
+      KC_DB_USERNAME: flowbox_user
+      KC_DB_PASSWORD: flowbox_pass
+    volumes:
+      - keycloak_data:/opt/keycloak/data
+      # Si tienes un realm para importar, descomenta esto:
+      # - ./contenedorkeycloak/import:/opt/keycloak/data/import
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8080/health/ready || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 15
+      start_period: 20s
+
+  osrm:
+    image: ghcr.io/project-osrm/osrm-backend:latest
+    container_name: osrm
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./osrm-data:/data
+    command: osrm-routed /data/argentina-latest.osrm
+
+  eureka-server:
+    build: ./ms-eureka-server
+    container_name: eureka-server
+    ports:
+      - "8762:8761"
+
+  ms-solicitudes:
+    build: ./ms-solicitudes
+    container_name: ms-solicitudes
+    ports:
+      - "8081:8081"
+    environment:
+      SERVER_PORT: 8081
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/flowboxdb
+      SPRING_DATASOURCE_USERNAME: flowbox_user
+      SPRING_DATASOURCE_PASSWORD: flowbox_pass
+      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER-URI: http://localhost:8088/realms/tpi-backend
+      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK-SET-URI: http://keycloak:8080/realms/tpi-backend/protocol/openid-connect/certs
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka
+    depends_on:
+      - postgres
+      - keycloak
+      - eureka-server
+
+  ms-logistica:
+    build: ./ms-logistica
+    container_name: ms-logistica
+    ports:
+      - "8082:8082"
+    environment:
+      SERVER_PORT: 8082
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/flowboxdb
+      SPRING_DATASOURCE_USERNAME: flowbox_user
+      SPRING_DATASOURCE_PASSWORD: flowbox_pass
+      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER-URI: http://localhost:8088/realms/tpi-backend
+      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK-SET-URI: http://keycloak:8080/realms/tpi-backend/protocol/openid-connect/certs
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka
+      APP_OSRM_BASE_URL: http://osrm:5000
+    depends_on:
+      - postgres
+      - keycloak
+      - osrm
+      - eureka-server
+
+  ms-flota:
+    build: ./tpi-flota-viajes
+    container_name: ms-flota
+    ports:
+      - "8083:8083"
+    environment:
+      SERVER_PORT: 8083
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/flowboxdb
+      SPRING_DATASOURCE_USERNAME: flowbox_user
+      SPRING_DATASOURCE_PASSWORD: flowbox_pass
+      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER-URI: http://localhost:8088/realms/tpi-backend
+      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK-SET-URI: http://keycloak:8080/realms/tpi-backend/protocol/openid-connect/certs
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka
+      API_LOGISTICA_URL: http://ms-logistica:8082
+    depends_on:
+      - postgres
+      - keycloak
+      - ms-logistica
+      - eureka-server
+
+  api-gateway:
+    build: ./e-commerce-gateway-main
+    container_name: api-gateway
+    ports:
+      - "8080:8080"
+    environment:
+      SERVER_PORT: 8080
+      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER-URI: http://localhost:8088/realms/tpi-backend
+      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK-SET-URI: http://keycloak:8080/realms/tpi-backend/protocol/openid-connect/certs
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka
+      MS_SOLICITUDES_URL: lb://MS-SOLICITUDES
+      MS_FLOTA_URL: lb://MS-FLOTA
+      MS_LOGISTICA_URL: lb://MS-LOGISTICA
+    depends_on:
+      - ms-solicitudes
+      - ms-flota
+      - ms-logistica
+      - eureka-server
+      - keycloak
+
+volumes:
+  postgres_data:
+  keycloak_data:

@@ -1,0 +1,6 @@
+Para acceder y probar en navegador:
+http://localhost:8081/realms/tpi-backend/protocol/openid-connect/auth
+  ?client_id=tpi-backend-client
+  &response_type=code
+  &redirect_uri=http://localhost:8080/api/login/oauth2/code/keycloak
+

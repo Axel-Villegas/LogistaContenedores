@@ -1,0 +1,290 @@
+{
+  "info": {
+    "_postman_id": "flowbox-tpi-complex-no-osrm",
+    "name": "TPI FlowBox - Escenario Complejo (Sin OSRM)",
+    "description": "Prueba validaciones de negocio usando datos pre-cargados por SQL (Tramos 10, 20, 30).",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "0. Auth & Setup",
+      "item": [
+        {
+          "name": "Login OPERADOR",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var jsonData = pm.response.json();",
+                  "if (jsonData.access_token) {",
+                  "    pm.collectionVariables.set(\"tokenOp\", jsonData.access_token);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/x-www-form-urlencoded" }
+            ],
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                { "key": "client_id", "value": "backend-client", "type": "text" },
+                { "key": "username", "value": "admin", "type": "text" },
+                { "key": "password", "value": "admin", "type": "text" },
+                { "key": "grant_type", "value": "password", "type": "text" }
+              ]
+            },
+            "url": "http://localhost:8088/realms/tpi-backend/protocol/openid-connect/token"
+          }
+        },
+        {
+          "name": "Login TRANSPORTISTA",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var jsonData = pm.response.json();",
+                  "if (jsonData.access_token) {",
+                  "    pm.collectionVariables.set(\"tokenTrans\", jsonData.access_token);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/x-www-form-urlencoded" }
+            ],
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                { "key": "client_id", "value": "backend-client", "type": "text" },
+                { "key": "username", "value": "transportista1", "type": "text" },
+                { "key": "password", "value": "123456", "type": "text" },
+                { "key": "grant_type", "value": "password", "type": "text" }
+              ]
+            },
+            "url": "http://localhost:8088/realms/tpi-backend/protocol/openid-connect/token"
+          }
+        },
+        {
+          "name": "Crear Transportista",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var jsonData = pm.response.json();",
+                  "pm.collectionVariables.set(\"idTransp\", jsonData.id);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{tokenOp}}", "type": "string" } ] },
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"Empresa Test Compleja\",\n  \"licencia\": \"LIC-COMPLEX-99\",\n  \"contacto\": \"complex@test.com\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "http://localhost:8083/api/flota/transportistas"
+          }
+        },
+        {
+          "name": "Crear Camión",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "var rnd = Math.floor(Math.random() * 1000);",
+                  "pm.collectionVariables.set(\"domCamion\", \"ZZ\" + rnd + \"XX\");"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{tokenOp}}", "type": "string" } ] },
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"dominio\": \"{{domCamion}}\",\n  \"capacidadPeso\": 30000.0,\n  \"capacidadVolumen\": 100.0,\n  \"idTransportista\": {{idTransp}},\n  \"costoPorKm\": 200.0,\n  \"consumoCombustiblePromedio\": 0.4\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "http://localhost:8083/api/flota/camiones"
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. Validaciones de Asignación",
+      "item": [
+        {
+          "name": "🛑 Fallo: Asignar con Solapamiento",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Debe fallar con 409 Conflict\", function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([400, 409, 500]);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{tokenOp}}", "type": "string" } ] },
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"camionDominio\": \"{{domCamion}}\",\n  \"tramoIds\": [10, 20],\n  \"fechasInicio\": [\"2025-12-01T10:00:00\", \"2025-12-01T11:00:00\"],\n  \"fechasFin\":    [\"2025-12-01T12:00:00\", \"2025-12-01T13:00:00\"] \n  // FALLO: El tramo 20 empieza a las 11:00, pero el 10 termina a las 12:00.",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "http://localhost:8082/api/v1/tramos/asignar-consecutivos"
+          }
+        },
+        {
+          "name": "✅ Éxito: Asignar Secuencial Correcto",
+          "request": {
+            "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{tokenOp}}", "type": "string" } ] },
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"camionDominio\": \"{{domCamion}}\",\n  \"tramoIds\": [10, 20, 30],\n  \"fechasInicio\": [\"2025-12-01T08:00:00\", \"2025-12-01T13:00:00\", \"2025-12-02T08:00:00\"],\n  \"fechasFin\":    [\"2025-12-01T12:00:00\", \"2025-12-01T18:00:00\", \"2025-12-02T12:00:00\"]\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "http://localhost:8082/api/v1/tramos/asignar-consecutivos"
+          }
+        },
+        {
+          "name": "Vista del Chofer (Ver 3 Tramos)",
+          "request": {
+            "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{tokenOp}}", "type": "string" } ] },
+            "method": "GET",
+            "header": [],
+            "url": "http://localhost:8083/api/flota/transportistas/{{idTransp}}/tramos-pendientes"
+          }
+        }
+      ]
+    },
+    {
+      "name": "4. Ejecución Secuencial",
+      "item": [
+        {
+          "name": "🛑 Fallo: Iniciar Tramo 20 (Saltando el 10)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Debe fallar por secuencia incorrecta\", function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([400, 409, 500]);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{tokenTrans}}", "type": "string" } ] },
+            "method": "POST",
+            "header": [],
+            "url": "http://localhost:8083/api/flota/tramos/20/iniciar"
+          }
+        },
+        {
+          "name": "Iniciar Tramo 10",
+          "request": {
+            "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{tokenTrans}}", "type": "string" } ] },
+            "method": "POST",
+            "header": [],
+            "url": "http://localhost:8083/api/flota/tramos/10/iniciar"
+          }
+        },
+        {
+          "name": "Finalizar Tramo 10",
+          "request": {
+            "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{tokenTrans}}", "type": "string" } ] },
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"kmRecorridos\": 300.0\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "http://localhost:8083/api/flota/tramos/10/finalizar"
+          }
+        },
+        {
+          "name": "Iniciar Tramo 20 (Ahora sí)",
+          "request": {
+            "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{tokenTrans}}", "type": "string" } ] },
+            "method": "POST",
+            "header": [],
+            "url": "http://localhost:8083/api/flota/tramos/20/iniciar"
+          }
+        },
+        {
+          "name": "Finalizar Tramo 20",
+          "request": {
+            "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{tokenTrans}}", "type": "string" } ] },
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"kmRecorridos\": 400.0\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "http://localhost:8083/api/flota/tramos/20/finalizar"
+          }
+        },
+        {
+          "name": "Iniciar Tramo 30",
+          "request": {
+            "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{tokenTrans}}", "type": "string" } ] },
+            "method": "POST",
+            "header": [],
+            "url": "http://localhost:8083/api/flota/tramos/30/iniciar"
+          }
+        },
+        {
+          "name": "Finalizar Tramo 30 (Fin de Ruta)",
+          "request": {
+            "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{tokenTrans}}", "type": "string" } ] },
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"kmRecorridos\": 100.0\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "http://localhost:8083/api/flota/tramos/30/finalizar"
+          }
+        }
+      ]
+    }
+  ],
+  "variable": [
+    { "key": "tokenOp", "value": "" },
+    { "key": "tokenTrans", "value": "" },
+    { "key": "idTransp", "value": "" },
+    { "key": "domCamion", "value": "" }
+  ]
+}

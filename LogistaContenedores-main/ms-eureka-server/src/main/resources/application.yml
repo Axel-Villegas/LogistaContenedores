@@ -1,0 +1,14 @@
+server:
+  port: 8761
+
+eureka:
+  client:
+    register-with-eureka: false # No se registra a sí mismo
+    fetch-registry: false
+  server:
+    wait-time-in-ms-when-sync-empty: 0 # Para desarrollo
+
+spring:
+  cloud:
+    compatibility-verifier:
+      enabled: false

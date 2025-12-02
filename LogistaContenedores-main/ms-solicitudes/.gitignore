@@ -1,0 +1,62 @@
+HELP.md
+target/
+.mvn/wrapper/maven-wrapper.jar
+!**/src/main/**/target/
+!**/src/test/**/target/
+
+### STS ###
+.apt_generated
+.classpath
+.factorypath
+.project
+.settings
+.springBeans
+.sts4-cache
+
+### IntelliJ IDEA ###
+.idea
+*.iws
+*.iml
+*.ipr
+
+### NetBeans ###
+/nbproject/private/
+/nbbuild/
+/dist/
+/nbdist/
+/.nb-gradle/
+build/
+!**/src/main/**/build/
+!**/src/test/**/build/
+
+### VS Code ###
+.vscode/
+
+### OSRM / Datos y binarios generados (evita subir archivos pesados) ###
+# Ignorar la carpeta de datos de OSRM completa (habitualmente contiene los .osrm y caches)
+/osrm-data/
+
+# Si la carpeta tiene subcarpetas con nombres distintos, ignorarlas también
+**/osrm-data/**
+
+# Archivos binarios y partes generadas por OSRM
+*.osrm
+*.osrm.*
+
+# Cachés y directorios de build de OSRM
+osrm-cache/
+osrm_build/
+
+# PBFs y extractos grandes (descomentar si quieres evitar subir PBFs también)
+#*.pbf
+
+# Logs y temporales relacionados con el procesamiento
+*.log
+*.tmp
+
+# Mantener archivos pequeños o de configuración si los necesitas (README, scripts)
+!osrm-data/README.md
+!osrm-data/*.md
+
+# Sistema
+.DS_Store

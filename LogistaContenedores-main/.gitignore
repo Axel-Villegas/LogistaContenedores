@@ -1,0 +1,60 @@
+# Carpetas de datos y cachés grandes
+/osrm-data/
+osrm-data/
+**/osrm-data/
+
+# Archivos binarios OSRM (generados)
+*.osrm
+*.osrm.*
+osrm-cache/
+osrm_build/
+
+# IDE y editores
+.vscode/
+.idea/
+*.iml
+*.iws
+*.ipr
+*.swp
+*.swo
+*~
+
+# Build y compilación
+target/
+build/
+dist/
+*.class
+*.jar
+*.war
+*.ear
+.gradle/
+
+# Maven
+.mvn/wrapper/maven-wrapper.jar
+!**/src/main/**/target/
+!**/src/test/**/target/
+
+# Node (si hay frontend)
+node_modules/
+npm-debug.log
+yarn-error.log
+
+# Base de datos y logs
+*.log
+*.sqlite
+*.db
+.DS_Store
+
+# Archivos temporales
+*.tmp
+*.bak
+*.swp
+*~
+
+# Entorno virtual Python (si aplica)
+venv/
+env/
+.venv/
+
+# Directorio raíz de datos (no versionear)
+/data/

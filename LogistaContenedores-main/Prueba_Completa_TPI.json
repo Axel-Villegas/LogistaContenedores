@@ -1,0 +1,181 @@
+{
+  "info": {
+    "name": "TPI Flowbox - Flujo Completo (Corregido)",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "1. Login (Obtener Token)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "var jsonData = pm.response.json();",
+              "if (jsonData.access_token) {",
+              "    pm.collectionVariables.set(\"token\", jsonData.access_token);",
+              "    console.log(\"Token actualizado correctamente\");",
+              "} else {",
+              "    console.log(\"Error al obtener token\");",
+              "}"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/x-www-form-urlencoded"
+          }
+        ],
+        "body": {
+          "mode": "urlencoded",
+          "urlencoded": [
+            { "key": "client_id", "value": "backend-client", "type": "text" },
+            { "key": "username", "value": "admin", "type": "text" },
+            { "key": "password", "value": "admin", "type": "text" },
+            { "key": "grant_type", "value": "password", "type": "text" }
+          ]
+        },
+        "url": {
+          "raw": "http://localhost:8088/realms/tpi-backend/protocol/openid-connect/token",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "8088",
+          "path": ["realms", "tpi-backend", "protocol", "openid-connect", "token"]
+        }
+      }
+    },
+    {
+      "name": "2. Crear Transportista (Necesario para el Camión)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "var jsonData = pm.response.json();",
+              "pm.collectionVariables.set(\"transportistaId\", jsonData.id);",
+              "console.log(\"Transportista ID guardado: \" + jsonData.id);"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "auth": {
+          "type": "bearer",
+          "bearer": [ { "key": "token", "value": "{{token}}", "type": "string" } ]
+        },
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"nombre\": \"Juan Perez\",\n  \"licencia\": \"LIC-12345678\",\n  \"contacto\": \"juan.perez@email.com\"\n}",
+          "options": { "raw": { "language": "json" } }
+        },
+        "url": {
+          "raw": "http://localhost:8083/api/flota/transportistas",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "8083",
+          "path": ["api", "flota", "transportistas"]
+        }
+      }
+    },
+    {
+      "name": "3. Crear Camión (Datos Correctos)",
+      "request": {
+        "auth": {
+          "type": "bearer",
+          "bearer": [ { "key": "token", "value": "{{token}}", "type": "string" } ]
+        },
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"dominio\": \"AA123BB\",\n  \"capacidadPeso\": 30000.0,\n  \"capacidadVolumen\": 80.0,\n  \"idTransportista\": {{transportistaId}},\n  \"costoPorKm\": 150.0,\n  \"consumoCombustiblePromedio\": 0.35\n}",
+          "options": { "raw": { "language": "json" } }
+        },
+        "url": {
+          "raw": "http://localhost:8083/api/flota/camiones",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "8083",
+          "path": ["api", "flota", "camiones"]
+        }
+      }
+    },
+    {
+      "name": "4. Asignar Camión a Tramo 1 (MS-Logistica)",
+      "request": {
+        "auth": {
+          "type": "bearer",
+          "bearer": [ { "key": "token", "value": "{{token}}", "type": "string" } ]
+        },
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"camionDominio\": \"AA123BB\",\n  \"fechaHoraInicioEstimada\": \"2025-12-02T08:00:00\",\n  \"fechaHoraFinEstimada\": \"2025-12-02T12:00:00\"\n}",
+          "options": { "raw": { "language": "json" } }
+        },
+        "url": {
+          "raw": "http://localhost:8082/api/v1/tramos/1/asignar-camion",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "8082",
+          "path": ["api", "v1", "tramos", "1", "asignar-camion"]
+        }
+      }
+    },
+    {
+      "name": "5. Iniciar Viaje (MS-Flota)",
+      "request": {
+        "auth": {
+          "type": "bearer",
+          "bearer": [ { "key": "token", "value": "{{token}}", "type": "string" } ]
+        },
+        "method": "POST",
+        "header": [],
+        "body": { "mode": "raw", "raw": "" },
+        "url": {
+          "raw": "http://localhost:8083/api/flota/tramos/1/iniciar",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "8083",
+          "path": ["api", "flota", "tramos", "1", "iniciar"]
+        }
+      }
+    },
+    {
+      "name": "6. Finalizar Viaje (MS-Flota)",
+      "request": {
+        "auth": {
+          "type": "bearer",
+          "bearer": [ { "key": "token", "value": "{{token}}", "type": "string" } ]
+        },
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"kmRecorridos\": 120.5\n}",
+          "options": { "raw": { "language": "json" } }
+        },
+        "url": {
+          "raw": "http://localhost:8083/api/flota/tramos/1/finalizar",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "8083",
+          "path": ["api", "flota", "tramos", "1", "finalizar"]
+        }
+      }
+    }
+  ],
+  "variable": [
+    { "key": "token", "value": "" },
+    { "key": "transportistaId", "value": "" }
+  ]
+}

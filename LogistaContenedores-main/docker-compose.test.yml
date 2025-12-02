@@ -1,0 +1,61 @@
+version: "2.4"
+
+services:
+  postgres:
+    image: postgres:16
+    container_name: flowbox-postgres
+    ports:
+      - "5434:5432"
+    environment:
+      POSTGRES_USER: flowbox_user
+      POSTGRES_PASSWORD: flowbox_pass
+      POSTGRES_DB: flowboxdb
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $POSTGRES_USER -d $POSTGRES_DB || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:24.0.3
+    container_name: flowbox-keycloak
+    command: start-dev
+    ports:
+      - "8088:8080"
+    environment:
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: admin123
+      # --- CONFIGURACIÓN DE RED Y HOSTNAME (CRÍTICO) ---
+      KC_HOSTNAME: localhost
+      KC_HOSTNAME_PORT: 8088
+      KC_HTTP_ENABLED: true
+      KC_PROXY_HEADERS: xforwarded
+      KC_HOSTNAME_ADMIN_URL: http://localhost:8088
+
+      # Base de datos - USA SU PROPIO SCHEMA
+      KC_DB: postgres
+      KC_DB_URL_HOST: postgres
+      KC_DB_URL_DATABASE: flowboxdb
+      KC_DB_USERNAME: flowbox_user
+      KC_DB_PASSWORD: flowbox_pass
+      KC_DB_SCHEMA: keycloak
+    volumes:
+      - keycloak_data:/opt/keycloak/data
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8080/health/ready || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 15
+      start_period: 20s
+
+volumes:
+  postgres_data:
+  keycloak_data:

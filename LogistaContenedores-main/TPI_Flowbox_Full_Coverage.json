@@ -1,0 +1,185 @@
+{
+  "info": {
+    "_postman_id": "flowbox-tpi-final-full",
+    "name": "TPI FlowBox - Cobertura Total + Asignación Múltiple (Final)",
+    "description": "Colección completa corregida. Incluye Consultas, Búsqueda por GET y Asignación Múltiple.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "0. Auth (Token Operador)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "var jsonData = pm.response.json();",
+              "if (jsonData.access_token) {",
+              "    pm.collectionVariables.set(\"tokenOp\", jsonData.access_token);",
+              "    console.log(\"Token Operador refrescado\");",
+              "}"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/x-www-form-urlencoded" }
+        ],
+        "body": {
+          "mode": "urlencoded",
+          "urlencoded": [
+            { "key": "client_id", "value": "backend-client", "type": "text" },
+            { "key": "username", "value": "admin", "type": "text" },
+            { "key": "password", "value": "admin", "type": "text" },
+            { "key": "grant_type", "value": "password", "type": "text" }
+          ]
+        },
+        "url": "http://localhost:8088/realms/tpi-backend/protocol/openid-connect/token"
+      }
+    },
+    {
+      "name": "1. Consultas Generales",
+      "item": [
+        {
+          "name": "Listar Tarifas",
+          "request": {
+            "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{tokenOp}}", "type": "string" } ] },
+            "method": "GET",
+            "url": "http://localhost:8082/api/v1/tarifas"
+          }
+        },
+        {
+          "name": "Listar Depósitos",
+          "request": {
+            "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{tokenOp}}", "type": "string" } ] },
+            "method": "GET",
+            "url": "http://localhost:8082/api/v1/depositos"
+          }
+        },
+        {
+          "name": "Listar Tramos",
+          "request": {
+            "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{tokenOp}}", "type": "string" } ] },
+            "method": "GET",
+            "url": "http://localhost:8082/api/v1/tramos"
+          }
+        },
+        {
+          "name": "Listar Camiones",
+          "request": {
+            "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{tokenOp}}", "type": "string" } ] },
+            "method": "GET",
+            "url": "http://localhost:8083/api/flota/camiones"
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. Búsqueda Inteligente (Corregido)",
+      "item": [
+        {
+          "name": "Buscar Camiones Disponibles (GET)",
+          "request": {
+            "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{tokenOp}}", "type": "string" } ] },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8083/api/flota/camiones/disponibles?fecha=2025-12-10T08:00:00&pesoMinimo=1000&volumenMinimo=10",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8083",
+              "path": ["api", "flota", "camiones", "disponibles"],
+              "query": [
+                { "key": "fecha", "value": "2025-12-10T08:00:00" },
+                { "key": "pesoMinimo", "value": "1000" },
+                { "key": "volumenMinimo", "value": "10" }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. Asignación Múltiple (Operador)",
+      "item": [
+        {
+          "name": "Crear Camión para Ruta Larga",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var jsonData = pm.response.json();",
+                  "pm.collectionVariables.set(\"camionMulti\", jsonData.dominio);"
+                ],
+                "type": "text/javascript"
+              }
+            },
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "var rnd = Math.floor(Math.random() * 1000);",
+                  "pm.collectionVariables.set(\"rndDominio\", \"MM\" + rnd + \"LL\");"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{tokenOp}}", "type": "string" } ] },
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"dominio\": \"{{rndDominio}}\",\n  \"capacidadPeso\": 30000.0,\n  \"capacidadVolumen\": 80.0,\n  \"idTransportista\": 1,\n  \"costoPorKm\": 150.0,\n  \"consumoCombustiblePromedio\": 0.35\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "http://localhost:8083/api/flota/camiones"
+          }
+        },
+        {
+          "name": "Asignar 2 Tramos Consecutivos",
+          "request": {
+            "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{tokenOp}}", "type": "string" } ] },
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"camionDominio\": \"{{camionMulti}}\",\n  \"tramoIds\": [20, 30],\n  \"fechasInicio\": [\"2025-12-10T08:00:00\", \"2025-12-10T14:00:00\"],\n  \"fechasFin\":    [\"2025-12-10T12:00:00\", \"2025-12-10T18:00:00\"]\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "http://localhost:8082/api/v1/tramos/asignar-consecutivos"
+          }
+        }
+      ]
+    },
+    {
+      "name": "4. Caso Borde: Reasignación",
+      "item": [
+        {
+          "name": "Reasignar Tramo 10",
+          "request": {
+            "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{tokenOp}}", "type": "string" } ] },
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nuevoCamionDominio\": \"{{camionMulti}}\",\n  \"nuevaFechaInicio\": \"2025-12-11T08:00:00\",\n  \"nuevaFechaFin\": \"2025-12-11T12:00:00\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "http://localhost:8082/api/v1/tramos/10/reasignar"
+          }
+        }
+      ]
+    }
+  ],
+  "variable": [
+    { "key": "tokenOp", "value": "" },
+    { "key": "camionMulti", "value": "" },
+    { "key": "rndDominio", "value": "" }
+  ]
+}

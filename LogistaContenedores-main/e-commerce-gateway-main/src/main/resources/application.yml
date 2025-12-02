@@ -1,0 +1,52 @@
+server:
+  port: ${SERVER_PORT:8080}
+
+spring:
+  application:
+    name: api-gateway
+  cloud:
+    compatibility-verifier:
+      enabled: false
+    gateway:
+      discovery:
+        locator:
+          enabled: true # Habilitar descubrimiento
+          lower-case-service-id: true # Nombres de servicio en minúscula
+      routes:
+        - id: ms-solicitudes
+          uri: lb://ms-solicitudes # "lb" = Load Balancer (Eureka)
+          predicates:
+            - Path=/api/v1/solicitudes/**, /api/v1/tracking/**
+
+        - id: ms-flota
+          uri: lb://ms-flota
+          predicates:
+            - Path=/api/flota/** # Ruta de FlotaController
+
+        - id: ms-logistica
+          uri: lb://ms-logistica
+          predicates:
+            - Path=/api/v1/rutas/**, /api/v1/depositos/**, /api/v1/tarifas/**, /api/v1/tramos/**
+
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          # 1. ISSUER-URI: Qué string debe tener el token en el campo 'iss'.
+          # Debe coincidir EXACTAMENTE con el host público que usaste para generar el token.
+          issuer-uri: http://localhost:8088/realms/tpi-backend
+          
+          # 2. JWK-SET-URI: A dónde va el contenedor a buscar las llaves públicas.
+          # Usa el nombre del servicio en docker-compose (keycloak) y el puerto interno (8080).
+          jwk-set-uri: http://keycloak:8080/realms/tpi-backend/protocol/openid-connect/certs
+
+# Configuración de Eureka Client
+eureka:
+  client:
+    serviceUrl:
+      defaultZone: ${EUREKA_CLIENT_SERVICEURL_DEFAULTZONE:http://localhost:8761/eureka}
+
+# Variables (ya no se usan para las rutas, pero las dejo por si las usas en otro lado)
+MS_SOLICITUDES_URL: lb://ms-solicitudes
+MS_FLOTA_URL: lb://ms-flota
+MS_LOGISTICA_URL: lb://ms-logistica

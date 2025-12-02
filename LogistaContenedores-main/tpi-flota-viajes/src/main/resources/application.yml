@@ -1,0 +1,61 @@
+##
+#server:
+#  port: ${SERVER_PORT:8083}
+#
+## URL del microservicio de logística
+#api:
+#  logistica:
+#    url: ${API_LOGISTICA_URL:http://ms-logistica:8080}
+#
+#spring:
+#  application:
+#    name: ms-flota
+#  cloud:
+#    compatibility-verifier:
+#      enabled: false
+#  datasource:
+#    # CAMBIO 1: Default a localhost para pruebas locales
+#    # CAMBIO 2: Agregar ?options=-c%20timezone=UTC para evitar el error de zona horaria
+#    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/flowboxdb?options=-c%20timezone=UTC}
+#    username: ${SPRING_DATASOURCE_USERNAME:flowbox_user}
+#    password: ${SPRING_DATASOURCE_PASSWORD:flowbox_pass}
+#    driver-class-name: org.postgresql.Driver
+#    hikari:
+#      connection-test-query: SELECT 1
+#      connection-timeout: 30000
+#      maximum-pool-size: 10
+#      minimum-idle: 1
+#  jpa:
+#    hibernate:
+#      ddl-auto: create-drop
+#    show-sql: true
+#    properties:
+#      hibernate:
+#        dialect: org.hibernate.dialect.PostgreSQLDialect
+#        jdbc:
+#          time_zone: UTC
+#
+#  security:
+#    oauth2:
+#      resourceserver:
+#        jwt:
+#          # 1. ISSUER-URI: Qué string debe tener el token en el campo 'iss'.
+#          # Debe coincidir EXACTAMENTE con el host público que usaste para generar el token.
+#          issuer-uri: http://localhost:8088/realms/tpi-backend
+#
+#          # 2. JWK-SET-URI: A dónde va el contenedor a buscar las llaves públicas.
+#          # Usa el nombre del servicio en docker-compose (keycloak) y el puerto interno (8080).
+#          jwk-set-uri: http://keycloak:8080/realms/tpi-backend/protocol/openid-connect/certs
+#
+#springdoc:
+#  swagger-ui:
+#    path: /swagger-ui.html
+#
+#eureka:
+#  client:
+#    serviceUrl:
+#      defaultZone: ${EUREKA_CLIENT_SERVICEURL_DEFAULTZONE:http://localhost:8761/eureka}
+#  instance:
+#    hostname: ms-flota
+#
+## Hikari (pool) settings were merged above under spring.datasource
