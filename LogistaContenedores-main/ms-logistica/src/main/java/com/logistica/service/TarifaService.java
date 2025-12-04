@@ -38,9 +38,12 @@ public class TarifaService {
 
     public Tarifa actualizarTarifa(Long id, Tarifa tarifaActualizada) {
         Tarifa tarifa = obtenerTarifa(id);
+
         tarifa.setValorKMBase(tarifaActualizada.getValorKMBase());
         tarifa.setCostoLitroCombustible(tarifaActualizada.getCostoLitroCombustible());
         tarifa.setFechaVigencia(tarifaActualizada.getFechaVigencia());
+        tarifa.setPorcentajeRecargo(tarifaActualizada.getPorcentajeRecargo());
+
         return tarifaRepository.save(tarifa);
     }
 }

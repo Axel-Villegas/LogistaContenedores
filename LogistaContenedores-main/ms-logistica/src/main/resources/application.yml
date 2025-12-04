@@ -32,11 +32,7 @@
 #          # Usa el nombre del servicio en docker-compose (keycloak) y el puerto interno (8080).
 #          jwk-set-uri: http://keycloak:8080/realms/tpi-backend/protocol/openid-connect/certs
 #
-#  rabbitmq:
-#    host: ${SPRING_RABBITMQ_HOST:localhost}
-#    port: ${SPRING_RABBITMQ_PORT:5672}
-#    username: ${SPRING_RABBITMQ_USERNAME:guest}
-#    password: ${SPRING_RABBITMQ_PASSWORD:guest}
+#
 #
 #springdoc:
 #  swagger-ui:
@@ -47,6 +43,8 @@
 #    base-url: ${APP_OSRM_BASE_URL:http://localhost:5000}
 #  flota:
 #    base-url: ${APP_FLOTA_BASE_URL:http://ms-flota:8083}
+#  solicitudes:
+#    base-url: ${APP_SOLICITUDES_BASE_URL:http://ms-solicitudes:8081}
 #
 #eureka:
 #  client:

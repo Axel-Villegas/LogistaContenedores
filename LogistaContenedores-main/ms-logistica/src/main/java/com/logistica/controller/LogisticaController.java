@@ -22,6 +22,15 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import java.util.List;
 import com.logistica.dto.mapper.TramoMapper;
+import com.logistica.dto.request.CrearTarifaRequest;
+import com.logistica.dto.response.TarifaResponse;
+import com.logistica.dto.mapper.TarifaMapper;
+import jakarta.validation.Valid;
+import com.logistica.dto.request.CrearDepositoRequest;
+import com.logistica.dto.response.DepositoResponse;
+import com.logistica.dto.mapper.DepositoMapper;
+import com.logistica.dto.response.RutaResponse;
+import com.logistica.dto.mapper.RutaMapper;
 
 @RestController
 @RequestMapping("/api/v1")
@@ -34,6 +43,11 @@ public class LogisticaController {
     private final TarifaService tarifaService;
     private final TramoService tramoService;
     private final TramoMapper tramoMapper;
+    private final TarifaMapper tarifaMapper;
+    private final DepositoMapper depositoMapper;
+    private final RutaMapper rutaMapper;
+
+    //ENDPOINTS DE RUTAS
 
     /**
      * Planifica una ruta calculando tramos, distancias y costos estimados
@@ -104,25 +118,125 @@ public class LogisticaController {
     }
 
     /**
-     * Crea un nuevo depósito
-     * POST /api/v1/depositos
+     * Obtener una ruta por ID
+     * GET /api/v1/rutas/{id}
      */
-    @PostMapping("/depositos")
-    public ResponseEntity<Deposito> crearDeposito(@RequestBody Deposito deposito) {
-        log.info("Creando depósito: {}", deposito.getNombre());
-        Deposito depositoCreado = depositoService.crearDeposito(deposito);
-        return ResponseEntity.status(HttpStatus.CREATED).body(depositoCreado);
+    @GetMapping("/rutas/{id}")
+    public ResponseEntity<RutaResponse> obtenerRuta(@PathVariable Long id) {
+        Ruta ruta = rutaService.obtenerRuta(id);
+        return ResponseEntity.ok(rutaMapper.toResponse(ruta));
     }
+
+    /**
+     * Obtener ruta por número de solicitud
+     * GET /api/v1/rutas/solicitud/{nroSolicitud}
+     */
+    @GetMapping("/rutas/solicitud/{nroSolicitud}")
+    public ResponseEntity<RutaResponse> obtenerRutaPorSolicitud(@PathVariable String nroSolicitud) {
+        Ruta ruta = rutaService.obtenerRutaPorSolicitud(nroSolicitud);
+        if (ruta == null) {
+            return ResponseEntity.notFound().build();
+        }
+        return ResponseEntity.ok(rutaMapper.toResponse(ruta));
+    }
+
+
+    //ENDPOINTS DE TARIFAS
 
     /**
      * Crea una nueva tarifa
      * POST /api/v1/tarifas
      */
     @PostMapping("/tarifas")
-    public ResponseEntity<Tarifa> crearTarifa(@RequestBody Tarifa tarifa) {
-        log.info("Creando tarifa vigente desde: {}", tarifa.getFechaVigencia());
-        Tarifa tarifaCreada = tarifaService.crearTarifa(tarifa);
-        return ResponseEntity.status(HttpStatus.CREATED).body(tarifaCreada);
+    public ResponseEntity<TarifaResponse> crearTarifa(@Valid @RequestBody CrearTarifaRequest request) {
+        log.info("Creando tarifa vigente desde: {}", request.getFechaVigencia());
+
+        // 1. Convertir Request -> Entidad
+        Tarifa tarifaEntity = tarifaMapper.toEntity(request);
+
+        // 2. Llamar al servicio
+        Tarifa tarifaCreada = tarifaService.crearTarifa(tarifaEntity);
+
+        // 3. Convertir Entidad -> Response
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(tarifaMapper.toResponse(tarifaCreada));
+    }
+
+    /**
+     * Listar tarifas
+     * GET /api/v1/tarifas
+     */
+    @GetMapping("/tarifas")
+    public ResponseEntity<List<TarifaResponse>> listarTarifas() {
+        List<TarifaResponse> response = tarifaService.listarTarifas().stream()
+                .map(tarifaMapper::toResponse)
+                .toList();
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * Actualiza una tarifa existente
+     * PUT /api/v1/tarifas/{id}
+     */
+    @PutMapping("/tarifas/{id}")
+    public ResponseEntity<TarifaResponse> actualizarTarifa(@PathVariable Long id, @Valid @RequestBody CrearTarifaRequest request) {
+        Tarifa tarifaEntity = tarifaMapper.toEntity(request);
+        Tarifa actualizada = tarifaService.actualizarTarifa(id, tarifaEntity);
+        return ResponseEntity.ok(tarifaMapper.toResponse(actualizada));
+    }
+
+    //ENDPOINTS DE DEPOSITOS
+
+    /**
+     * Crea un nuevo depósito
+     * POST /api/v1/depositos
+     */
+    @PostMapping("/depositos")
+    public ResponseEntity<DepositoResponse> crearDeposito(@Valid @RequestBody CrearDepositoRequest request) {
+        log.info("Creando depósito: {}", request.getNombre());
+
+        // 1. DTO -> Entidad
+        Deposito depositoEntity = depositoMapper.toEntity(request);
+
+        // 2. Lógica de negocio
+        Deposito depositoCreado = depositoService.crearDeposito(depositoEntity);
+
+        // 3. Entidad -> DTO Response
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(depositoMapper.toResponse(depositoCreado));
+    }
+
+    /**
+     * Listar depósitos
+     * GET /api/v1/depositos
+     */
+    @GetMapping("/depositos")
+    public ResponseEntity<List<DepositoResponse>> listarDepositos() {
+        List<DepositoResponse> response = depositoService.listarDepositos().stream()
+                .map(depositoMapper::toResponse)
+                .toList();
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * Actualiza un depósito existente
+     * PUT /api/v1/depositos/{id}
+     */
+    @PutMapping("/depositos/{id}")
+    public ResponseEntity<DepositoResponse> actualizarDeposito(
+            @PathVariable Long id,
+            @Valid @RequestBody CrearDepositoRequest request) { // Reutilizamos el Request DTO
+
+        log.info("Actualizando depósito ID {}: {}", id, request.getNombre());
+
+        // 1. DTO -> Entidad (Temporal con los datos nuevos)
+        Deposito nuevosDatos = depositoMapper.toEntity(request);
+
+        // 2. Llamar al servicio para que actualice
+        Deposito depositoActualizado = depositoService.actualizarDeposito(id, nuevosDatos);
+
+        // 3. Entidad -> DTO Response
+        return ResponseEntity.ok(depositoMapper.toResponse(depositoActualizado));
     }
 
     /**
@@ -201,17 +315,10 @@ public class LogisticaController {
         return ResponseEntity.ok(response);
     }
 
-    //Estos estan devolviendo entidades directamente
-    @GetMapping("/depositos")
-    public ResponseEntity<List<Deposito>> listarDepositos() {
-        return ResponseEntity.ok(depositoService.listarDepositos());
-    }
-
-    @GetMapping("/tarifas")
-    public ResponseEntity<List<Tarifa>> listarTarifas() {
-        return ResponseEntity.ok(tarifaService.listarTarifas());
-    }
-
+    /**
+     * Listar todos los tramos
+     * GET /api/v1/tramos
+     */
     @GetMapping("/tramos")
     public ResponseEntity<List<TramoResponse>> listarTramos() {
         List<TramoResponse> response = tramoService.listarTramos().stream()
@@ -219,6 +326,7 @@ public class LogisticaController {
                 .toList();
         return ResponseEntity.ok(response);
     }
+
     /**
      * Obtener tramos de una ruta específica
      * GET /api/v1/rutas/{rutaId}/tramos

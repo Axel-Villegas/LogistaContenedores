@@ -4,13 +4,10 @@ import com.logistica.model.*;
 import com.logistica.repository.TramoRepository;
 
 import com.logistica.client.FlotaApiClient;
-import com.logistica.event.TramoIniciado;
-import com.logistica.event.TramoFinalizado;
 import com.logistica.exception.TramoNotFoundException;
 import com.logistica.exception.RutaNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
@@ -18,6 +15,7 @@ import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Optional;
 import com.logistica.client.dto.CamionInfo;
+import com.logistica.client.SolicitudesApiClient;
 
 @Service
 @RequiredArgsConstructor
@@ -25,19 +23,16 @@ import com.logistica.client.dto.CamionInfo;
 public class TramoService {
 
     private final TramoRepository tramoRepository;
-
-    private final RabbitTemplate rabbitTemplate;
     private final FlotaApiClient flotaApiClient;
+    private final SolicitudesApiClient solicitudesApiClient;
 
     /**
      * Marca un tramo como INICIADO (llamado por MS Flota)
-     * Publica evento a RabbitMQ para MS Solicitudes
-     * 
+     *
      * @return El tramo actualizado
      */
     @Transactional
     public Tramo marcarTramoIniciado(Long idTramo) {
-        // NUEVA VALIDACIÓN: Verificar secuencia de tramos
         validarSecuenciaTramos(idTramo);
 
         log.info("Marcando tramo {} como EN CURSO", idTramo);
@@ -56,20 +51,7 @@ public class TramoService {
 
         log.info("Tramo {} ahora está EN CURSO, publicando evento", idTramo);
 
-        // Publica evento a RabbitMQ para MS Solicitudes
-        try {
-            TramoIniciado evento = new TramoIniciado(
-                    idTramo,
-                    ruta.getNroSolicitudRef(),
-                    LocalDateTime.now(),
-                    "INICIADO");
-
-            rabbitTemplate.convertAndSend("solicitudes.exchange", "tramo.iniciado", evento);
-            log.info("Evento TramoIniciado publicado para solicitud: {}", ruta.getNroSolicitudRef());
-        } catch (Exception e) {
-            log.error("Error al publicar evento TramoIniciado en RabbitMQ: {}", e.getMessage());
-            // No relanzamos la excepción para que el cambio de estado en BD persista
-        }
+        solicitudesApiClient.notificarTramoIniciado(ruta.getNroSolicitudRef(), idTramo);
 
         return tramo;
     }
@@ -105,30 +87,32 @@ public class TramoService {
         tramo.setTiempoReal(tiempoReal);
 
         tramoRepository.save(tramo);
-
         log.info("Tramo {} finalizado. Costo real: ${}, Tiempo real: {}s",
                 idTramo, costoReal, tiempoReal);
 
-        // Publica evento a RabbitMQ para MS Solicitudes
-        try {
-            TramoFinalizado evento = new TramoFinalizado(
-                    idTramo,
-                    ruta.getNroSolicitudRef(),
-                    kmRecorridos,
-                    costoReal,
-                    tiempoReal,
-                    LocalDateTime.now(),
-                    "FINALIZADO");
-
-            rabbitTemplate.convertAndSend("solicitudes.exchange", "tramo.finalizado", evento);
-            log.info("Evento TramoFinalizado publicado para solicitud: {}", ruta.getNroSolicitudRef());
-
-            // Verificar si todos los tramos de la ruta están finalizados
-            verificarYActualizarEstadoRuta(ruta);
-        } catch (Exception e) {
-            log.error("Error al publicar evento TramoFinalizado o actualizar ruta en RabbitMQ: {}", e.getMessage());
-            // No relanzamos la excepción para que el cambio de estado en BD persista
+        // LÓGICA UBICACIÓN (Ya la tenías bien)
+        String ubicacionFin;
+        boolean esDestinoFinal;
+        if (tramo.getDepositoDestino() != null) {
+            ubicacionFin = tramo.getDepositoDestino().getNombre();
+            esDestinoFinal = false;
+        } else {
+            ubicacionFin = "Destino Final"; // Ojo: Si tienes la direccion textual en la solicitud, idealmente usarla, pero Logistica no la tiene. "Destino Final" es aceptable.
+            esDestinoFinal = true;
         }
+
+        // ...
+
+        // CORREGIDO: Pasar kmRecorridos
+        solicitudesApiClient.notificarTramoFinalizado(
+                ruta.getNroSolicitudRef(),
+                idTramo,
+                kmRecorridos, // <--- AGREGADO
+                costoReal,
+                tiempoReal,
+                ubicacionFin,
+                esDestinoFinal
+        );
 
         return tramo;
     }
@@ -155,18 +139,7 @@ public class TramoService {
             log.info("Todos los tramos de la ruta {} están finalizados. Costo total: ${}, Tiempo total: {}s",
                     ruta.getId(), costoTotalReal, tiempoTotalReal);
 
-            // Publicar evento para actualizar solicitud a ENTREGADA
-            TramoFinalizado eventoFinal = new TramoFinalizado(
-                    null, // idTramo null indica que es el evento final de toda la ruta
-                    ruta.getNroSolicitudRef(),
-                    0, // kmRecorridos no aplica
-                    costoTotalReal,
-                    tiempoTotalReal,
-                    LocalDateTime.now(),
-                    "ENTREGADA");
-
-            rabbitTemplate.convertAndSend("solicitudes.exchange", "ruta.completada", eventoFinal);
-            log.info("Evento de ruta completada publicado para solicitud: {}", ruta.getNroSolicitudRef());
+            solicitudesApiClient.notificarRutaCompletada(ruta.getNroSolicitudRef());
         }
     }
 
@@ -180,33 +153,39 @@ public class TramoService {
         Tarifa tarifa = tramo.getTarifa();
         double costoTotal = 0.0;
 
-        // 1. COSTO DE TRASLADO (BASE DEL CAMIÓN)
-        // Requisito: "Los camiones deben conocer su costo base de traslado por km"
+        // 1. CÁLCULO DE COSTO DE TRANSPORTE
         if (tramo.getDominioCamionRef() != null && !tramo.getDominioCamionRef().isEmpty()) {
             try {
                 CamionInfo camion = flotaApiClient.obtenerCamionPorDominio(tramo.getDominioCamionRef());
 
-                // A. Costo Base (Chofer, amortización, etc.)
-                double costoBaseCamion = kmRecorridos * camion.getCostoPorKm();
-                costoTotal += costoBaseCamion;
-                log.debug("Costo base del camión {}: ${}", tramo.getDominioCamionRef(), costoBaseCamion);
-
-                // B. Costo de Combustible (Específico del camión + Precio actual)
-                // Requisito: "...más el costo de combustible del camión específico"
-                // Consumo viene en L/100km, lo dividimos por 100 para tener L/km
+                // Calcular litros: (L/100km / 100) * km
                 double litrosConsumidos = kmRecorridos * (camion.getConsumoCombustiblePromedio() / 100.0);
 
+                // Costo base del combustible
                 double costoCombustible = litrosConsumidos * tarifa.getCostoLitroCombustible();
-                costoTotal += costoCombustible;
 
-                log.debug("Costo combustible: {} L (a ${}/L) = ${}",
-                        String.format("%.2f", litrosConsumidos),
-                        tarifa.getCostoLitroCombustible(),
-                        String.format("%.2f", costoCombustible));
+                // --- CAMBIO AQUÍ: Usar valor dinámico de la Tarifa ---
+
+                // Obtenemos el porcentaje (ej: 30.0) o usamos 0.0 si es nulo
+                double porcentaje = tarifa.getPorcentajeRecargo() != null ?
+                        tarifa.getPorcentajeRecargo() : 0.0;
+
+                // Factor multiplicador: Si es 30%, factor es 1.30
+                double factor = 1 + (porcentaje / 100.0);
+
+                double costoTransporte = costoCombustible * factor;
+                // -----------------------------------------------------
+
+                costoTotal += costoTransporte;
+
+                log.info("Costo transporte: Combustible ${} + {}% recargo = ${}",
+                        String.format("%.2f", costoCombustible),
+                        porcentaje,
+                        String.format("%.2f", costoTransporte));
             } catch (Exception e) {
                 log.warn("No se pudo obtener información del camión {}, usando tarifa base: {}",
                         tramo.getDominioCamionRef(), e.getMessage());
-                // Fallback: usar tarifa base si no se puede obtener el camión
+                 // Fallback: usar tarifa base si no se puede obtener el camión
                 costoTotal += kmRecorridos * tarifa.getValorKMBase();
             }
         } else {

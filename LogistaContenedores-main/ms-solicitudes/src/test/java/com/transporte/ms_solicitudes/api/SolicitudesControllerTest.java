@@ -37,11 +37,11 @@ public class SolicitudesControllerTest {
 
         @Test
         public void testCrearSolicitud() throws Exception {
-                SolicitudRequestDTO req = new SolicitudRequestDTO(
+                com.transporte.ms_solicitudes.api.dto.SolicitudRequestDTO req = new com.transporte.ms_solicitudes.api.dto.SolicitudRequestDTO(
                                 "cliente-1",
                                 "contenedor-1",
-                                new SolicitudRequestDTO.Localizacion("Origen", 0.0, 0.0),
-                                new SolicitudRequestDTO.Localizacion("Destino", 10.0, 10.0));
+                                new com.transporte.ms_solicitudes.api.dto.SolicitudRequestDTO.Localizacion("Origen", 0.0, 0.0),
+                                new com.transporte.ms_solicitudes.api.dto.SolicitudRequestDTO.Localizacion("Destino", 10.0, 10.0));
 
                 Solicitud solicitud = Solicitud.builder()
                                 .nroSolicitud("12345678")

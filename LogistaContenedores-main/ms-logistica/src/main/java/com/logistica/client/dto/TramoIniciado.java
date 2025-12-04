@@ -1,4 +1,4 @@
-package com.logistica.event;
+package com.logistica.client.dto;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;

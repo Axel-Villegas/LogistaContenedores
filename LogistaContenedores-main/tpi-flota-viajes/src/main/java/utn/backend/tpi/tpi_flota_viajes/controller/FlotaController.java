@@ -83,6 +83,7 @@ public class FlotaController {
     }
 
     // --- Endpoints de VIAJES (TRANSPORTISTA) ---
+
     @PostMapping("/tramos/{idTramo}/iniciar")
     @PreAuthorize("hasRole('TRANSPORTISTA')")
     public ResponseEntity<TramoResponse> iniciarTramo(@PathVariable Long idTramo) {

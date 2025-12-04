@@ -38,8 +38,18 @@ public class SecurityConfig {
                                                 .requestMatchers(HttpMethod.GET, "/api/v1/solicitudes/*")
                                                 .hasRole("CLIENTE")
 
+                                                //nose si esto estara bien
+                                                // En SecurityConfig de ms-solicitudes
+                                                .requestMatchers(HttpMethod.PUT, "/api/v1/solicitudes/*/estado").hasAnyRole("OPERADOR", "TRANSPORTISTA")
+                                                .requestMatchers(HttpMethod.PUT, "/api/v1/solicitudes/*/actualizar-metricas").hasAnyRole("OPERADOR", "TRANSPORTISTA")
+
+
                                                 // Denegar todo lo demás por defecto
                                                 .anyRequest().authenticated())
+
+                                                //nose si esto esta bien
+
+
                                 // Usar validación de token JWT (Resource Server)
                                 .oauth2ResourceServer(
                                                 oauth2 -> oauth2.jwt(jwt -> jwt.jwtAuthenticationConverter(

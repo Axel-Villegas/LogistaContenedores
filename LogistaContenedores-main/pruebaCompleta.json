@@ -1,0 +1,303 @@
+{
+  "info": {
+    "_postman_id": "c3d4e5f6-8901-2345-6789-0abcdef12345",
+    "name": "TPI Flowbox - Camino Feliz (Final)",
+    "description": "Flujo completo validando la integración de los 3 microservicios.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "1. [Cliente] Crear Solicitud",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "var jsonData = pm.response.json();",
+              "pm.environment.set(\"nro_solicitud\", jsonData.nroSolicitud);",
+              "pm.environment.set(\"id_contenedor\", jsonData.contenedor.id);",
+              "console.log(\"Solicitud: \" + jsonData.nroSolicitud);"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"contenedor\": {\n    \"idContenedor\": \"CONT-DEMO-2025\",\n    \"peso\": 1200.0,\n    \"volumen\": 30.0,\n    \"refrigerado\": false\n  },\n  \"origen\": {\n    \"direccion\": \"Puerto Madero, Bs As\",\n    \"latitud\": -34.6037,\n    \"longitud\": -58.3816\n  },\n  \"destino\": {\n    \"direccion\": \"Parque Industrial Pilar\",\n    \"latitud\": -34.4600,\n    \"longitud\": -58.9100\n  }\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "http://localhost:8081/api/v1/solicitudes",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "8081",
+          "path": ["api", "v1", "solicitudes"]
+        }
+      }
+    },
+    {
+      "name": "2. [Cliente] Verificar Estado (BORRADOR)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "var jsonData = pm.response.json();",
+              "pm.test(\"Estado es BORRADOR\", () => pm.expect(jsonData.estado).to.eql(\"BORRADOR\"));"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:8081/api/v1/solicitudes/{{nro_solicitud}}",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "8081",
+          "path": ["api", "v1", "solicitudes", "{{nro_solicitud}}"]
+        }
+      }
+    },
+    {
+      "name": "3. [Cliente] Tracking Contenedor (EN_ORIGEN)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "var jsonData = pm.response.json();",
+              "pm.test(\"Estado EN_ORIGEN\", () => pm.expect(jsonData.estado).to.eql(\"EN_ORIGEN\"));"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:8081/api/v1/solicitudes/contenedores/{{id_contenedor}}",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "8081",
+          "path": ["api", "v1", "solicitudes", "contenedores", "{{id_contenedor}}"]
+        }
+      }
+    },
+    {
+      "name": "4. [Operador] Planificar Ruta",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "var jsonData = pm.response.json();",
+              "// Guardamos el ID del primer tramo para que el chofer lo use",
+              "var tramoId = jsonData.ruta.tramos[0].id;",
+              "pm.environment.set(\"id_tramo\", tramoId);",
+              "console.log(\"Tramo ID: \" + tramoId);"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n    \"nroSolicitud\": \"{{nro_solicitud}}\",\n    \"idDepositos\": [],\n    \"latOrigen\": -34.6037,\n    \"lonOrigen\": -58.3816,\n    \"latDestino\": -34.4600,\n    \"lonDestino\": -58.9100,\n    \"idTarifa\": 1\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "http://localhost:8082/api/v1/rutas/planificar",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "8082",
+          "path": ["api", "v1", "rutas", "planificar"]
+        }
+      }
+    },
+    {
+      "name": "5. [Operador] Asignar Camión",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n    \"idTramo\": {{id_tramo}},\n    \"idCamion\": 1,\n    \"idChofer\": 1\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "http://localhost:8082/api/v1/tramos/asignar-recursos",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "8082",
+          "path": ["api", "v1", "tramos", "asignar-recursos"]
+        }
+      }
+    },
+    {
+      "name": "6. [Transportista] Iniciar Viaje (MS-FLOTA)",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:8083/api/v1/flota/tramos/{{id_tramo}}/iniciar",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "8083",
+          "path": ["api", "v1", "flota", "tramos", "{{id_tramo}}", "iniciar"]
+        }
+      }
+    },
+    {
+      "name": "7. [Cliente] Verificar EN_TRANSITO (Solicitud)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "var jsonData = pm.response.json();",
+              "pm.test(\"Estado Solicitud es EN_TRANSITO\", () => pm.expect(jsonData.estado).to.eql(\"EN_TRANSITO\"));"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:8081/api/v1/solicitudes/{{nro_solicitud}}",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "8081",
+          "path": ["api", "v1", "solicitudes", "{{nro_solicitud}}"]
+        }
+      }
+    },
+    {
+      "name": "8. [Cliente] Verificar EN_TRANSITO (Contenedor)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "var jsonData = pm.response.json();",
+              "pm.test(\"Contenedor EN_TRANSITO\", () => pm.expect(jsonData.estado).to.eql(\"EN_TRANSITO\"));"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:8081/api/v1/solicitudes/contenedores/{{id_contenedor}}",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "8081",
+          "path": ["api", "v1", "solicitudes", "contenedores", "{{id_contenedor}}"]
+        }
+      }
+    },
+    {
+      "name": "9. [Transportista] Finalizar Viaje (MS-FLOTA)",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n    \"kmRecorridos\": 60.5\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "http://localhost:8083/api/v1/flota/tramos/{{id_tramo}}/finalizar",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "8083",
+          "path": ["api", "v1", "flota", "tramos", "{{id_tramo}}", "finalizar"]
+        }
+      }
+    },
+    {
+      "name": "10. [Cliente] Verificar ENTREGADA (Solicitud)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "var jsonData = pm.response.json();",
+              "pm.test(\"Estado Solicitud ENTREGADA\", () => pm.expect(jsonData.estado).to.eql(\"ENTREGADA\"));",
+              "pm.test(\"Costo Final calculado (>0)\", () => pm.expect(jsonData.costoFinal).to.be.above(0));"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:8081/api/v1/solicitudes/{{nro_solicitud}}",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "8081",
+          "path": ["api", "v1", "solicitudes", "{{nro_solicitud}}"]
+        }
+      }
+    },
+    {
+      "name": "11. [Cliente] Verificar ENTREGADA (Contenedor)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "var jsonData = pm.response.json();",
+              "pm.test(\"Contenedor ENTREGADO\", () => pm.expect(jsonData.estado).to.eql(\"ENTREGADA\"));",
+              "pm.test(\"Ubicación en Destino\", () => pm.expect(jsonData.ubicacionActual).to.include(\"Destino\"));"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:8081/api/v1/solicitudes/contenedores/{{id_contenedor}}",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "8081",
+          "path": ["api", "v1", "solicitudes", "contenedores", "{{id_contenedor}}"]
+        }
+      }
+    }
+  ]
+}

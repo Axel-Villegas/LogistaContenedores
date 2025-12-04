@@ -19,10 +19,17 @@ public class Solicitud {
     private Integer tiempoEstimado;
     private Double costoFinal;
     private Integer tiempoReal;
+
+    // --- Ubicación Origen ---
+    private String origenDireccion;
     private Double origenLatitud;
     private Double origenLongitud;
+
+    // --- Ubicación Destino ---
+    private String destinoDireccion;
     private Double destinoLatitud;
     private Double destinoLongitud;
+
     private String idCliente;
     private String idContenedor;
     private String idRutaRef;

@@ -38,11 +38,13 @@ public class DepositoService {
 
     public Deposito actualizarDeposito(Long id, Deposito depositoActualizado) {
         Deposito deposito = obtenerDeposito(id);
+
         deposito.setNombre(depositoActualizado.getNombre());
         deposito.setDireccion(depositoActualizado.getDireccion());
         deposito.setLatitud(depositoActualizado.getLatitud());
         deposito.setLongitud(depositoActualizado.getLongitud());
         deposito.setCostoEstadiaDiario(depositoActualizado.getCostoEstadiaDiario());
+
         return depositoRepository.save(deposito);
     }
 }

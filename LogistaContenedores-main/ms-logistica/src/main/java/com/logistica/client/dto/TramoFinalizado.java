@@ -1,4 +1,4 @@
-package com.logistica.event;
+package com.logistica.client.dto;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -14,4 +14,7 @@ public class TramoFinalizado {
     private double tiempoReal;
     private LocalDateTime fechaHora;
     private String estado; // "FINALIZADO"
+
+    private String ubicacionFin;
+    private boolean esDestinoFinal;
 }

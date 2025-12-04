@@ -26,11 +26,6 @@ spring:
           issuer-uri: http://localhost:8088/realms/tpi-backend
           jwk-set-uri: http://localhost:8088/realms/tpi-backend/protocol/openid-connect/certs
 
-  rabbitmq:
-    host: localhost
-    port: 5672
-    username: guest
-    password: guest
 
 app:
   osrm:
@@ -38,6 +33,8 @@ app:
   flota:
     # IMPORTANTE: Apunta al microservicio local
     base-url: http://localhost:8083
+  solicitudes:
+    base-url: ${APP_SOLICITUDES_BASE_URL:http://ms-solicitudes:8081}
 
 # Eureka deshabilitado para pruebas locales
 eureka:

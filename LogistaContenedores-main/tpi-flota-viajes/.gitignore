@@ -31,3 +31,10 @@ build/
 
 ### VS Code ###
 .vscode/
+
+# Mapas OSRM (NO SUBIR)
+osrm-data/
+*.osrm
+*.pbf
+*.tpi
+.DS_Store

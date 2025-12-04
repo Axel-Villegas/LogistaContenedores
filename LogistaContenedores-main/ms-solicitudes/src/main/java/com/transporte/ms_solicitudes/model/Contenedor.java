@@ -1,8 +1,6 @@
 package com.transporte.ms_solicitudes.model;
 
-import jakarta.persistence.Entity;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
+import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -20,4 +18,9 @@ public class Contenedor {
     private Double peso;
     private Double volumen;
     private boolean refrigerado;
+
+    @Enumerated(EnumType.STRING)
+    private EstadoContenedor estado;
+
+    private String ubicacionActual;
 }

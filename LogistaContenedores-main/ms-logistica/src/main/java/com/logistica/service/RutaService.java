@@ -15,6 +15,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
 import java.util.ArrayList;
+import com.logistica.dto.mapper.RutaMapper;
+import com.logistica.dto.response.RutaResponse;
 
 @Service
 @RequiredArgsConstructor
@@ -26,6 +28,7 @@ public class RutaService {
     private final DepositoRepository depositoRepository;
     private final TarifaRepository tarifaRepository;
     private final OsrmClient2 osrmClient;
+    private final RutaMapper rutaMapper;
 
     /**
      * Planifica una ruta calculando tramos, distancias y costos estimados
@@ -49,7 +52,8 @@ public class RutaService {
             double costoTotal = existing.getTramos().stream().mapToDouble(Tramo::getCostoEstimado).sum();
             double tiempoTotal = existing.getTramos().stream().mapToDouble(Tramo::getTiempoEstimado).sum();
 
-            return new RutaPlanningResponse(existing, costoTotal, tiempoTotal);
+            RutaResponse rutaDto = rutaMapper.toResponse(existing);
+            return new RutaPlanningResponse(rutaDto, costoTotal, tiempoTotal);
         }
 
         // Crear Ruta
@@ -126,8 +130,9 @@ public class RutaService {
         log.info("Ruta planificada: {} tramos, {} km, ${} estimado",
                 cantidadTramos, distanciaTotal, costoTotal);
 
+        RutaResponse rutaDto = rutaMapper.toResponse(rutaGuardada);
         // ✅ Devolver Response con costos para MS Solicitudes
-        return new RutaPlanningResponse(rutaGuardada, costoTotal, tiempoTotal);
+        return new RutaPlanningResponse(rutaDto, costoTotal, tiempoTotal);
     }
 
     public Ruta obtenerRuta(Long id) {

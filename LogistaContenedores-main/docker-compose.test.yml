@@ -1,11 +1,12 @@
 version: "2.4"
 
 services:
+  # 1. Base de Datos
   postgres:
     image: postgres:16
     container_name: flowbox-postgres
     ports:
-      - "5434:5432"
+      - "5434:5432" # OJO: Expuesto en puerto 5434 para no chocar con un postgres local
     environment:
       POSTGRES_USER: flowbox_user
       POSTGRES_PASSWORD: flowbox_pass
@@ -20,41 +21,47 @@ services:
       retries: 5
       start_period: 10s
 
+  # 2. Autenticación
   keycloak:
     image: quay.io/keycloak/keycloak:24.0.3
     container_name: flowbox-keycloak
     command: start-dev
     ports:
-      - "8088:8080"
+      - "8088:8080" # Expuesto en 8088
     environment:
       KEYCLOAK_ADMIN: admin
       KEYCLOAK_ADMIN_PASSWORD: admin123
-      # --- CONFIGURACIÓN DE RED Y HOSTNAME (CRÍTICO) ---
+      # Configuración Local
       KC_HOSTNAME: localhost
       KC_HOSTNAME_PORT: 8088
       KC_HTTP_ENABLED: true
       KC_PROXY_HEADERS: xforwarded
       KC_HOSTNAME_ADMIN_URL: http://localhost:8088
-
-      # Base de datos - USA SU PROPIO SCHEMA
+      # Conexión a BD
       KC_DB: postgres
       KC_DB_URL_HOST: postgres
       KC_DB_URL_DATABASE: flowboxdb
       KC_DB_USERNAME: flowbox_user
       KC_DB_PASSWORD: flowbox_pass
-      KC_DB_SCHEMA: keycloak
+      KC_DB_SCHEMA: keycloak # Keycloak usará su propio esquema para no mezclar tablas
     volumes:
       - keycloak_data:/opt/keycloak/data
     depends_on:
       postgres:
         condition: service_healthy
     restart: unless-stopped
-    healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:8080/health/ready || exit 1"]
-      interval: 10s
-      timeout: 5s
-      retries: 15
-      start_period: 20s
+
+  # 3. Motor de Rutas (OSRM)
+  osrm:
+    image: ghcr.io/project-osrm/osrm-backend:latest
+    container_name: flowbox-osrm
+    ports:
+      - "5000:5000" # Expuesto en 5000 para que ms-logistica local lo vea
+    volumes:
+      - ./osrm-data:/data # Mapea tu carpeta local al contenedor
+    # Comando crítico: usa el algoritmo MLD que preparaste con los comandos anteriores
+    command: osrm-routed --algorithm mld /data/argentina-latest.osrm
+    restart: unless-stopped
 
 volumes:
   postgres_data:

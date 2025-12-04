@@ -14,4 +14,9 @@ public class Tarifa {
     private double valorKMBase;
     private double costoLitroCombustible;
     private LocalDate fechaVigencia;
+    /**
+     * Porcentaje adicional para cubrir mantenimiento, seguros y chofer.
+     * Ejemplo: 30.0 para un 30%
+     */
+    private Double porcentajeRecargo;
 }
