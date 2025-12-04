@@ -51,17 +51,17 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
-  # 3. Motor de Rutas (OSRM)
-  osrm:
-    image: ghcr.io/project-osrm/osrm-backend:latest
-    container_name: flowbox-osrm
-    ports:
-      - "5000:5000" # Expuesto en 5000 para que ms-logistica local lo vea
-    volumes:
-      - ./osrm-data:/data # Mapea tu carpeta local al contenedor
-    # Comando crítico: usa el algoritmo MLD que preparaste con los comandos anteriores
-    command: osrm-routed --algorithm mld /data/argentina-latest.osrm
-    restart: unless-stopped
+#  # 3. Motor de Rutas (OSRM)
+#  osrm:
+#    image: ghcr.io/project-osrm/osrm-backend:latest
+#    container_name: flowbox-osrm
+#    ports:
+#      - "5000:5000" # Expuesto en 5000 para que ms-logistica local lo vea
+#    volumes:
+#      - ./osrm-data:/data # Mapea tu carpeta local al contenedor
+#    # Comando crítico: usa el algoritmo MLD que preparaste con los comandos anteriores
+#    command: osrm-routed --algorithm mld /data/argentina-latest.osrm
+#    restart: unless-stopped
 
 volumes:
   postgres_data:

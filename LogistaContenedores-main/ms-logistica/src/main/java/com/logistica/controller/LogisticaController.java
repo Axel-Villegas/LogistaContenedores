@@ -1,20 +1,17 @@
 package com.logistica.controller;
 
 import com.logistica.dto.request.PlanificarRutaRequest;
-import com.logistica.dto.response.CalculoResponse;
-import com.logistica.dto.response.DistanciaResponse;
+import com.logistica.dto.response.*;
 import com.logistica.dto.AsignarCamionRequest;
 import com.logistica.dto.AsignarTramosConsecutivosRequest;
 import com.logistica.dto.ReasignarTramoRequest;
 import com.logistica.dto.AsignacionResponse;
-import com.logistica.dto.response.TramoResponse;
 import com.logistica.exception.TramoNotFoundException;
 import com.logistica.model.*;
 import com.logistica.service.RutaService;
 import com.logistica.service.DepositoService;
 import com.logistica.service.TarifaService;
 import com.logistica.service.TramoService;
-import com.logistica.dto.response.RutaPlanningResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -23,13 +20,10 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 import com.logistica.dto.mapper.TramoMapper;
 import com.logistica.dto.request.CrearTarifaRequest;
-import com.logistica.dto.response.TarifaResponse;
 import com.logistica.dto.mapper.TarifaMapper;
 import jakarta.validation.Valid;
 import com.logistica.dto.request.CrearDepositoRequest;
-import com.logistica.dto.response.DepositoResponse;
 import com.logistica.dto.mapper.DepositoMapper;
-import com.logistica.dto.response.RutaResponse;
 import com.logistica.dto.mapper.RutaMapper;
 
 @RestController
@@ -138,6 +132,28 @@ public class LogisticaController {
             return ResponseEntity.notFound().build();
         }
         return ResponseEntity.ok(rutaMapper.toResponse(ruta));
+    }
+
+    // REQUERIMIENTO 3: Consultar rutas tentativas
+    @PostMapping("/rutas/tentativas")
+    public ResponseEntity<List<RutaTentativaResponse>> consultarRutasTentativas(@RequestBody PlanificarRutaRequest request) {
+        log.info("Consultando rutas tentativas para solicitud: {}", request.getNroSolicitud());
+
+        // Recuperar entidades necesarias (igual que en planificar)
+        List<Deposito> depositos = request.getIdDepositos() != null
+                ? request.getIdDepositos().stream().map(depositoService::obtenerDeposito).toList()
+                : List.of();
+
+        Tarifa tarifa = tarifaService.obtenerTarifa(request.getIdTarifa());
+
+        List<RutaTentativaResponse> alternativas = rutaService.obtenerRutasTentativas(
+                depositos,
+                request.getLatOrigen(), request.getLonOrigen(),
+                request.getLatDestino(), request.getLonDestino(),
+                tarifa
+        );
+
+        return ResponseEntity.ok(alternativas);
     }
 
 

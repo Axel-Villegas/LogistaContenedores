@@ -1,0 +1,332 @@
+{
+  "info": {
+    "_postman_id": "tpi-2025-globals-fix",
+    "name": "TPI 2025 - Flujo Final (Variables Globales)",
+    "description": "Colección con scripts corregidos para usar pm.globals.set().\nEsto soluciona el error 401 al persistir los tokens correctamente.\n\nCredenciales configuradas:\n- Client: backend-client\n- Pass: 123456",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "1. Auth (Keycloak)",
+      "item": [
+        {
+          "name": "Login OPERADOR",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var data = pm.response.json();",
+                  "if (data.access_token) {",
+                  "    // FIX: Guardar en GLOBALES para evitar problemas de entorno",
+                  "    pm.globals.set(\"token_op\", data.access_token);",
+                  "    console.log(\"✅ Token Operador guardado en Globales\");",
+                  "} else {",
+                  "    console.error(\"❌ Error login Operador: \" + JSON.stringify(data));",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/x-www-form-urlencoded" }
+            ],
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                { "key": "client_id", "value": "backend-client", "type": "text" },
+                { "key": "username", "value": "operador1", "type": "text" },
+                { "key": "password", "value": "123456", "type": "text" },
+                { "key": "grant_type", "value": "password", "type": "text" }
+              ]
+            },
+            "url": "http://localhost:8088/realms/tpi-backend/protocol/openid-connect/token"
+          }
+        },
+        {
+          "name": "Login TRANSPORTISTA",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var data = pm.response.json();",
+                  "if (data.access_token) {",
+                  "    pm.globals.set(\"token_trans\", data.access_token);",
+                  "    console.log(\"✅ Token Transportista guardado en Globales\");",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/x-www-form-urlencoded" }
+            ],
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                { "key": "client_id", "value": "backend-client", "type": "text" },
+                { "key": "username", "value": "transportista1", "type": "text" },
+                { "key": "password", "value": "123456", "type": "text" },
+                { "key": "grant_type", "value": "password", "type": "text" }
+              ]
+            },
+            "url": "http://localhost:8088/realms/tpi-backend/protocol/openid-connect/token"
+          }
+        },
+        {
+          "name": "Login CLIENTE",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var data = pm.response.json();",
+                  "if (data.access_token) {",
+                  "    pm.globals.set(\"token_cli\", data.access_token);",
+                  "    console.log(\"✅ Token Cliente guardado en Globales\");",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/x-www-form-urlencoded" }
+            ],
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                { "key": "client_id", "value": "backend-client", "type": "text" },
+                { "key": "username", "value": "cliente1", "type": "text" },
+                { "key": "password", "value": "123456", "type": "text" },
+                { "key": "grant_type", "value": "password", "type": "text" }
+              ]
+            },
+            "url": "http://localhost:8088/realms/tpi-backend/protocol/openid-connect/token"
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. Configuración (Rol: OPERADOR)",
+      "item": [
+        {
+          "name": "2.1 Crear Tarifa",
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token_op}}", "type": "string" }] },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"valorKMBase\": 150.0,\n  \"costoLitroCombustible\": 1200.0,\n  \"porcentajeRecargo\": 30.0,\n  \"fechaVigencia\": \"2025-01-01\"\n}"
+            },
+            "url": "http://localhost:8082/api/v1/tarifas"
+          }
+        },
+        {
+          "name": "2.2 Crear Depósito",
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token_op}}", "type": "string" }] },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"Deposito Central\",\n  \"direccion\": \"Av. Corrientes 1234\",\n  \"latitud\": -34.6037,\n  \"longitud\": -58.3816,\n  \"costoEstadiaDiario\": 5000.0\n}"
+            },
+            "url": "http://localhost:8082/api/v1/depositos"
+          }
+        },
+        {
+          "name": "2.3 Crear Transportista",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var jsonData = pm.response.json();",
+                  "pm.globals.set(\"idTransportista\", jsonData.id);",
+                  "console.log(\"Transportista ID guardado: \" + jsonData.id);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token_op}}", "type": "string" }] },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"Transportes Rápidos S.A.\",\n  \"licencia\": \"LIC-99999\",\n  \"contacto\": \"contacto@rapidos.com\"\n}"
+            },
+            "url": "http://localhost:8083/api/flota/transportistas"
+          }
+        },
+        {
+          "name": "2.4 Crear Camión",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var jsonData = pm.response.json();",
+                  "pm.globals.set(\"dominioCamion\", jsonData.dominio);",
+                  "console.log(\"Camión Creado guardado: \" + jsonData.dominio);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token_op}}", "type": "string" }] },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"dominio\": \"AA123BB\",\n  \"capacidadPeso\": 20000.0,\n  \"capacidadVolumen\": 50.0,\n  \"idTransportista\": {{idTransportista}},\n  \"costoPorKm\": 250.0,\n  \"consumoCombustiblePromedio\": 15.5\n}"
+            },
+            "url": "http://localhost:8083/api/flota/camiones"
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. Solicitudes (Rol: CLIENTE)",
+      "item": [
+        {
+          "name": "3.1 Crear Solicitud",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var jsonData = pm.response.json();",
+                  "pm.globals.set(\"nroSolicitud\", jsonData.nroSolicitud);",
+                  "console.log(\"Solicitud creada guardada: \" + jsonData.nroSolicitud);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token_cli}}", "type": "string" }] },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"contenedor\": {\n    \"idContenedor\": \"CONT-001\",\n    \"peso\": 5000.0,\n    \"volumen\": 30.0,\n    \"refrigerado\": false\n  },\n  \"origen\": {\n    \"direccion\": \"Puerto Bs As\",\n    \"latitud\": -34.58,\n    \"longitud\": -58.37\n  },\n  \"destino\": {\n    \"direccion\": \"Córdoba Capital\",\n    \"latitud\": -31.42,\n    \"longitud\": -64.18\n  }\n}"
+            },
+            "url": "http://localhost:8081/api/v1/solicitudes"
+          }
+        }
+      ]
+    },
+    {
+      "name": "4. Simulación Logística (Insert Manual)",
+      "item": [
+        {
+          "name": "LEER INSTRUCCIONES",
+          "request": {
+            "method": "GET",
+            "url": "https://google.com",
+            "description": "PAUSA AQUÍ.\n\n1. Copia el nroSolicitud que obtuviste en el paso 3.1 (ej. '8A2B3C').\n2. Ejecuta el comando SQL en tu terminal Docker para crear el tramo manualmente.\n3. Setea la variable global 'idTramo' en 10 si usaste el SQL de ejemplo."
+          }
+        },
+        {
+          "name": "4.2 Verificar Tramo Creado (Y guardar ID)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var jsonData = pm.response.json();",
+                  "// Busca el tramo que creaste manualmente (ID 10)",
+                  "if (jsonData.length > 0) {",
+                  "    var tramo = jsonData.find(t => t.id == 10) || jsonData[0];",
+                  "    pm.globals.set(\"idTramo\", tramo.id);",
+                  "    console.log(\"Tramo ID capturado: \" + tramo.id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token_op}}", "type": "string" }] },
+            "method": "GET",
+            "url": "http://localhost:8082/api/v1/tramos"
+          }
+        }
+      ]
+    },
+    {
+      "name": "5. Asignación y Viaje (Rol: TRANSPORTISTA/OPERADOR)",
+      "item": [
+        {
+          "name": "5.1 Asignar Camión a Tramo (Op)",
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token_op}}", "type": "string" }] },
+            "method": "POST",
+            "header": [],
+            "url": "http://localhost:8083/api/flota/tramos/{{idTramo}}/asignar?dominio={{dominioCamion}}",
+            "description": "Llama a ms-flota, que valida y llama a ms-logistica."
+          }
+        },
+        {
+          "name": "5.2 Ver Tramos Pendientes (Trans)",
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token_trans}}", "type": "string" }] },
+            "method": "GET",
+            "url": "http://localhost:8083/api/flota/transportistas/{{idTransportista}}/tramos-pendientes"
+          }
+        },
+        {
+          "name": "5.3 Iniciar Tramo (Trans)",
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token_trans}}", "type": "string" }] },
+            "method": "POST",
+            "url": "http://localhost:8083/api/flota/tramos/{{idTramo}}/iniciar"
+          }
+        },
+        {
+          "name": "5.4 Verificar Estado Solicitud (En Transito)",
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token_cli}}", "type": "string" }] },
+            "method": "GET",
+            "url": "http://localhost:8081/api/v1/solicitudes/{{nroSolicitud}}"
+          }
+        },
+        {
+          "name": "5.5 Finalizar Tramo (Trans)",
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token_trans}}", "type": "string" }] },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"kmRecorridos\": 750.5\n}"
+            },
+            "url": "http://localhost:8083/api/flota/tramos/{{idTramo}}/finalizar"
+          }
+        },
+        {
+          "name": "5.6 Verificar Estado Solicitud (Final)",
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token_cli}}", "type": "string" }] },
+            "method": "GET",
+            "url": "http://localhost:8081/api/v1/solicitudes/{{nroSolicitud}}"
+          }
+        }
+      ]
+    }
+  ]
+}
